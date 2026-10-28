@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reach Curve</title>
+<meta name="description" content="How does reach grow with spend, and where does it flatten? A reach curve calculator with a knee, marginal returns, and signal weight.">
+<link rel="canonical" href="https://reach-curve.benjads.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ben.j.ads">
+<meta property="og:title" content="Reach Curve">
+<meta property="og:description" content="How does reach grow with spend, and where does it flatten? A reach curve calculator with a knee, marginal returns, and signal weight.">
+<meta property="og:url" content="https://reach-curve.benjads.com/">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#17180d">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Reach Curve",
+  "url": "https://reach-curve.benjads.com/",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "description": "Shows how reach grows with spend, and where the curve flattens. Includes the knee, marginal returns, and signal weight.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Ben Johnston", "url": "https://benjads.com/" }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #EEF0E3;
+    color: #272818;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 20px 48px; }
+  .kicker {
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #5c5e48; margin: 0 0 8px;
+  }
+  .brandbar { display: block; width: 120px; margin-bottom: 16px; }
+  .brandbar img { display: block; width: 100%; height: auto; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #17180d; color: #eef0e4; }
+    .card { background: #212216; border-color: #3d3f2e; }
+    input[type="number"] { background: #17180d; color: #eef0e4; border-color: #3d3f2e; }
+    .kicker, .stat .lbl, .note { color: #a6a98f; }
+    .brandbar { background: #eef0e4; padding: 8px 10px; }
+  }
+  h1 { font-size: 40px; line-height: 1.05; margin: 0 0 12px; letter-spacing: -0.01em; }
+  h1 span { background: #DCF04A; padding: 0 6px; }
+  .lede { font-size: 18px; line-height: 1.5; max-width: 640px; margin: 0 0 28px; }
+  .card {
+    background: #f7f8f0; border: 1.5px solid #272818;
+    padding: 20px; margin: 0 0 20px;
+  }
+  .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 760px) { .controls { grid-template-columns: 1fr 1fr; } }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  input[type="number"] {
+    width: 100%; font-size: 16px; padding: 10px 12px;
+    border: 1.5px solid #272818; background: #fff; color: #272818;
+  }
+  .radios { display: flex; flex-direction: column; gap: 8px; }
+  .radios label { font-weight: 400; margin: 0; display: flex; gap: 8px; align-items: center; }
+  .chart-wrap { overflow-x: auto; }
+  svg { display: block; width: 100%; height: auto; min-width: 560px; }
+  .outputs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 760px) { .outputs { grid-template-columns: 1fr; } }
+  .stat { border-top: 3px solid #DCF04A; padding-top: 10px; }
+  .stat .num { font-size: 28px; font-weight: 700; line-height: 1.15; }
+  .stat .lbl { font-size: 13px; color: #5c5e48; margin-top: 4px; line-height: 1.4; }
+  .verdict { font-size: 20px; line-height: 1.4; font-weight: 600; margin: 0; }
+  .note { font-size: 13px; line-height: 1.55; color: #5c5e48; }
+  .note strong { color: #272818; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="brandbar" href="https://benjads.com/"><img src="logo/benjads-base-olive-transparent.svg" alt="ben.j.ads"></a>
+  <h1>Reach curves, <span>drawn.</span></h1>
+  <p class="lede">A reach curve rises fast, then flattens. The height of the curve is the sum of littles: thousands of small nudges, added up. Find the knee, spend to it not past it, and weight the curve by signal.</p>
+
+  <div class="card">
+    <div class="controls">
+      <div>
+        <label for="budget">Budget ($)</label>
+        <input id="budget" type="number" value="25000" min="0" step="1000">
+      </div>
+      <div>
+        <label for="cpm">CPM ($)</label>
+        <input id="cpm" type="number" value="20" min="0.01" step="1">
+      </div>
+      <div>
+        <label for="aud">Audience size (people)</label>
+        <input id="aud" type="number" value="1000000" min="1" step="10000">
+      </div>
+      <div>
+        <label>Signal weight</label>
+        <div class="radios">
+          <label><input type="radio" name="signal" value="0.8"> Weak (0.8)</label>
+          <label><input type="radio" name="signal" value="1" checked> Standard (1.0)</label>
+          <label><input type="radio" name="signal" value="1.3"> Premium (1.3)</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="chart-wrap" id="chart"></div>
+    <p class="note" style="margin:12px 0 0;">Dark line: your curve at the selected signal weight. Faint lines: the other two signal weights, so you can see signal shift the whole curve. Dashed verticals: the knee and your budget.</p>
+  </div>
+
+  <div class="card">
+    <p class="verdict" id="verdict"></p>
+    <div class="outputs" style="margin-top:20px;">
+      <div class="stat"><div class="num" id="oReach"></div><div class="lbl">people reached at your budget</div></div>
+      <div class="stat"><div class="num" id="oPct"></div><div class="lbl">of the audience reached</div></div>
+      <div class="stat"><div class="num" id="oKnee"></div><div class="lbl">spend at the knee, where marginal return falls to 25% of its starting rate (reach there is always 75% of audience)</div></div>
+      <div class="stat"><div class="num" id="oMarg"></div><div class="lbl">extra people per $1,000 at your current budget</div></div>
+      <div class="stat"><div class="num" id="o50"></div><div class="lbl">spend to reach 50% of the audience</div></div>
+      <div class="stat"><div class="num" id="o90"></div><div class="lbl">spend to reach 90% of the audience</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 12px;font-size:24px;">How it works</h2>
+    <p style="margin:0 0 12px;"><strong>The model.</strong> Impressions = budget / CPM x 1,000. Effective impressions = signal weight x impressions. Reach = audience x (1 - e to the power of negative effective impressions over audience). Marginal return = signal weight x (1,000 / CPM) x e to the power of negative effective impressions over audience, in people per dollar. The knee is the spend where marginal return falls to 25% of its starting rate, which always lands at 75% of the audience.</p>
+    <p style="margin:0;"><strong>The verdict.</strong> Before the knee, more spend still buys littles efficiently. Past the knee, each extra $1,000 buys less than a quarter of what the first $1,000 bought.</p>
+  </div>
+
+  <p class="note"><strong>Toy model, not a measurement.</strong> It assumes impressions land randomly across the audience, so reach follows audience times one minus e to the power of negative effective impressions over audience. Signal weight scales effective impressions. Real curves come from delivery data. Use this to build intuition, not budgets.</p>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Math.round(n).toLocaleString("en-US");
+const money = (n) => "$" + fmt(n);
+
+function reachAt(S, CPM, A, w) {
+  const I = (S / CPM) * 1000 * w;
+  return A * (1 - Math.exp(-I / A));
+}
+function marginalPer1k(S, CPM, A, w) {
+  const I = (S / CPM) * 1000 * w;
+  return w * (1000 / CPM) * Math.exp(-I / A) * 1000;
+}
+function kneeSpend(CPM, A, w) {
+  return (CPM * Math.log(4) * A) / (w * 1000);
+}
+function spendForPct(p, CPM, A, w) {
+  return (CPM * -Math.log(1 - p) * A) / (w * 1000);
+}
+
+function draw() {
+  const B = parseFloat($("budget").value);
+  const CPM = parseFloat($("cpm").value);
+  const A = parseFloat($("aud").value);
+  const w = parseFloat(document.querySelector('input[name="signal"]:checked').value);
+  if (!(B >= 0) || !(CPM > 0) || !(A > 0) || !isFinite(w)) return;
+
+  const knee = kneeSpend(CPM, A, w);
+  const xMax = Math.max(B * 1.6, knee * 1.6, spendForPct(0.95, CPM, A, w));
+
+  const W = 680, H = 400, ML = 72, MR = 24, MT = 20, MB = 48;
+  const iw = W - ML - MR, ih = H - MT - MB;
+  const X = (S) => ML + iw * (S / xMax);
+  const Y = (R) => MT + ih * (1 - R / A);
+
+  function pathFor(ww) {
+    let d = "";
+    for (let i = 0; i <= 160; i++) {
+      const S = (xMax * i) / 160;
+      const x = X(S).toFixed(1), y = Y(reachAt(S, CPM, A, ww)).toFixed(1);
+      d += (i === 0 ? "M" : "L") + x + " " + y;
+    }
+    return d;
+  }
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="inherit">`;
+  [0, 0.25, 0.5, 0.75, 1].forEach((p) => {
+    const y = Y(A * p);
+    s += `<line x1="${ML}" y1="${y}" x2="${W - MR}" y2="${y}" stroke="#c9cdb5" stroke-width="1"/>`;
+    s += `<text x="${ML - 8}" y="${y + 4}" text-anchor="end" font-size="12" fill="#5c5e48">${Math.round(p * 100)}%</text>`;
+  });
+  s += `<text x="${ML + iw / 2}" y="${H - 8}" text-anchor="middle" font-size="12" fill="#5c5e48">Spend ($)</text>`;
+  s += `<text x="16" y="${MT + ih / 2}" text-anchor="middle" font-size="12" fill="#5c5e48" transform="rotate(-90 16 ${MT + ih / 2})">Reach</text>`;
+  [0.8, 1.0, 1.3].forEach((ww) => {
+    if (ww === w) return;
+    s += `<path d="${pathFor(ww)}" fill="none" stroke="#a6a98f" stroke-width="1.5"/>`;
+  });
+  s += `<path d="${pathFor(w)}" fill="none" stroke="#272818" stroke-width="3"/>`;
+  const kx = X(knee), ky = Y(A * 0.75);
+  s += `<line x1="${kx}" y1="${MT}" x2="${kx}" y2="${MT + ih}" stroke="#56620a" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  s += `<circle cx="${kx}" cy="${ky}" r="6" fill="#DCF04A" stroke="#272818" stroke-width="2"/>`;
+  s += `<text x="${kx}" y="${MT - 4}" text-anchor="middle" font-size="12" font-weight="700" fill="#272818">Knee ${money(knee)}</text>`;
+  if (B > 0) {
+    const bx = X(B), by = Y(reachAt(B, CPM, A, w));
+    s += `<line x1="${bx}" y1="${MT}" x2="${bx}" y2="${MT + ih}" stroke="#272818" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+    s += `<circle cx="${bx}" cy="${by}" r="6" fill="#fff" stroke="#272818" stroke-width="2"/>`;
+    s += `<text x="${bx}" y="${H - 24}" text-anchor="middle" font-size="12" font-weight="700" fill="#272818">Budget ${money(B)}</text>`;
+  }
+  s += `</svg>`;
+  $("chart").innerHTML = s;
+
+  const R = reachAt(B, CPM, A, w);
+  $("oReach").textContent = fmt(R);
+  $("oPct").textContent = (100 * R / A).toFixed(1) + "%";
+  $("oKnee").textContent = money(knee);
+  $("oMarg").textContent = fmt(marginalPer1k(B, CPM, A, w));
+  $("o50").textContent = money(spendForPct(0.5, CPM, A, w));
+  $("o90").textContent = money(spendForPct(0.9, CPM, A, w));
+
+  const init = w * (1000 / CPM) * 1000;
+  const marg = marginalPer1k(B, CPM, A, w);
+  $("verdict").textContent =
+    B < knee
+      ? `Before the knee. Each extra $1,000 still buys ${fmt(marg)} people, against ${fmt(init)} at the start. More spend still buys littles efficiently.`
+      : `Past the knee. Each extra $1,000 now buys ${fmt(marg)} people, down from ${fmt(init)} at the start. The littles past here get littler.`;
+}
+
+["budget", "cpm", "aud"].forEach((id) => $(id).addEventListener("input", draw));
+document.querySelectorAll('input[name="signal"]').forEach((r) => r.addEventListener("change", draw));
+draw();
+</script>
+</body>
+</html>
